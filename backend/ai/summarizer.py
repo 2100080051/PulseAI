@@ -151,7 +151,7 @@ def get_pending_articles(limit: int = 50) -> list[dict]:
     return [a for a in result.data if a["id"] not in existing_ids]
 
 
-def save_summary(article_id: str, summary_text: str, category: str) -> Optional[str]:
+def save_summary(article_id: str, summary_text: str, category: str, edition_date: str) -> Optional[str]:
     """Save an AI-generated summary to Supabase with 'pending' status."""
     try:
         sb = get_supabase()
@@ -160,7 +160,7 @@ def save_summary(article_id: str, summary_text: str, category: str) -> Optional[
             "summary_text": summary_text,
             "category": category,
             "status": "pending",
-            "edition_date": str(date.today()),
+            "edition_date": edition_date,
         }).execute()
         return result.data[0]["id"]
     except Exception as e:
@@ -170,13 +170,16 @@ def save_summary(article_id: str, summary_text: str, category: str) -> Optional[
 
 # ── Main Summarizer Entry Point ───────────────────────────────────────────────
 
-def run_summarizer(limit: int = 30) -> dict:
+def run_summarizer(limit: int = 30, edition_date: str = None) -> dict:
     """
     Summarize all pending (unsummarized) articles.
     Returns stats about how many were processed.
     """
+    if not edition_date:
+        edition_date = str(date.today())
+        
     logger.info("=" * 60)
-    logger.info("🤖 PulseAI Summarizer — Starting AI processing")
+    logger.info(f"🤖 PulseAI Summarizer — Starting AI processing for {edition_date}")
     logger.info("=" * 60)
 
     articles = get_pending_articles(limit=limit)
@@ -205,7 +208,7 @@ def run_summarizer(limit: int = 30) -> dict:
         summary = summarize_article(title, source, category, content)
 
         if summary:
-            summary_id = save_summary(article["id"], summary, category)
+            summary_id = save_summary(article["id"], summary, category, edition_date)
             if summary_id:
                 success_count += 1
                 logger.info(f"  ✅ Summary saved")

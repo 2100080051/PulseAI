@@ -152,14 +152,14 @@ def get_approved_summaries(edition_date: str) -> list[dict]:
     return result.data
 
 
-def run_pipeline():
+def run_pipeline(edition_date_str: str):
     """Trigger the full aggregation + summarization pipeline."""
     from backend.aggregator.fetcher import run_aggregator
     from backend.ai.summarizer import run_summarizer
     with st.spinner("🚀 Running aggregator..."):
         agg_stats = run_aggregator()
     with st.spinner("🤖 Running AI summarizer..."):
-        sum_stats = run_summarizer()
+        sum_stats = run_summarizer(edition_date=edition_date_str)
     return agg_stats, sum_stats
 
 
@@ -171,11 +171,12 @@ with st.sidebar:
     st.divider()
 
     # Edition date picker
+    # Allow +1 day because Cloud servers are in UTC while user is in IST (India)
     selected_date = st.date_input(
         "📅 Edition Date",
         value=date.today(),
         min_value=date.today() - timedelta(days=30),
-        max_value=date.today(),
+        max_value=date.today() + timedelta(days=1),
     )
     edition_date_str = str(selected_date)
 
@@ -194,7 +195,7 @@ with st.sidebar:
     st.markdown("### 🔧 Pipeline")
     if st.button("▶️ Run Full Pipeline", use_container_width=True, type="primary"):
         try:
-            agg_stats, sum_stats = run_pipeline()
+            agg_stats, sum_stats = run_pipeline(edition_date_str)
             st.success(
                 f"✅ Done!\n\n"
                 f"Fetched: {agg_stats['total_saved']} articles\n"
