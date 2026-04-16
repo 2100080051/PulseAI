@@ -17,7 +17,7 @@ from backend.db.client import get_supabase
 # ─── Page Config ─────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="PulseAI Editorial Dashboard",
+    page_title="Global Pulse AI Editorial Dashboard",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -166,7 +166,7 @@ def run_pipeline(edition_date_str: str):
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown("## ⚡ PulseAI")
+    st.markdown("## ⚡ Global Pulse AI")
     st.markdown("**Editorial Dashboard**")
     st.divider()
 
@@ -207,12 +207,12 @@ with st.sidebar:
             st.error(f"Pipeline error: {e}")
 
     st.divider()
-    st.markdown("*Built by Nani · PulseAI 2026*")
+    st.markdown("*Built by Nani · Global Pulse AI 2026*")
 
 
 # ─── Main Content ─────────────────────────────────────────────────────────────
 
-st.markdown("# ⚡ PulseAI — Editorial Dashboard")
+st.markdown("# ⚡ Global Pulse AI — Editorial Dashboard")
 st.markdown(f"**Edition:** {selected_date.strftime('%B %d, %Y')} &nbsp;|&nbsp; Review and approve today's AI stories")
 
 # Stats row
@@ -365,11 +365,14 @@ with tab_distribution:
     st.divider()
     
     # Podcast Studio
-    st.markdown("## 🎙️ PulseAI Podcast Studio (Beta)")
+    st.markdown("## 🎙️ Global Pulse AI Podcast Studio (Beta)")
     st.info("Uses LLM logic to write a conversational radio script from your approved stories, then synthesizes an audio MP3 using Edge TTS.")
     
     with st.container(border=True):
         import os
+        from backend.db.client import get_supabase
+        
+        edition_type = st.radio("🎙️ Select Podcast Edition", ["Morning", "Evening"], horizontal=True)
         
         col_gen1, col_gen2 = st.columns(2)
         
@@ -388,9 +391,8 @@ with tab_distribution:
                     if script:
                         with st.spinner("🗣️ Synthesizing Voice (Edge TTS)..."):
                             audio_file = generate_podcast_audio(script, output_path="pulseai_daily.mp3")
-                        st.rerun() # Refresh to show new audio
+                        st.rerun()
 
-            # Always display MP3 if it exists
             if os.path.exists("pulseai_daily.mp3"):
                 st.success("✅ Podcast Audio is Ready!")
                 st.audio("pulseai_daily.mp3")
@@ -399,23 +401,41 @@ with tab_distribution:
                             
         with col_gen2:
             st.markdown("**🎬 YouTube Video Generator**")
-            st.caption("Converts your MP3 into a YouTube-ready MP4 Video.")
+            st.caption("Renders and uploads the video directly to Supabase Cloud.")
             
-            if st.button("🎬 Render YouTube MP4", use_container_width=True):
+            if st.button("🎬 Render & Upload to Cloud", use_container_width=True):
                 if not os.path.exists("pulseai_daily.mp3"):
                     st.error("You must generate the MP3 Audio first!")
                 else:
                     from backend.audio.video_generator import generate_mp4_from_audio
-                    with st.spinner("🎥 Rendering Video... this may take 30-60 seconds..."):
-                        video_file = generate_mp4_from_audio("pulseai_daily.mp3", output_path="pulseai_video.mp4")
-                        st.rerun() # Refresh to show new video
+                    with st.spinner("🎥 Rendering & Uploading Video (Takes 1 minute)..."):
+                        local_mp4 = f"pulseai_video_{edition_type.lower()}.mp4"
+                        video_file = generate_mp4_from_audio("pulseai_daily.mp3", output_path=local_mp4)
+                        
+                        # Upload to Supabase Storage
+                        sb = get_supabase()
+                        cloud_filename = f"{edition_date_str}_{edition_type.lower()}.mp4"
+                        
+                        try:
+                            # Remove old file if rewriting same day/edition
+                            sb.storage.from_("podcasts").remove([cloud_filename])
+                        except:
+                            pass
+                            
+                        with open(video_file, "rb") as f:
+                            sb.storage.from_("podcasts").upload(
+                                path=cloud_filename,
+                                file=f,
+                                file_options={"content-type": "video/mp4"}
+                            )
+                        st.rerun()
             
-            # Always display MP4 if it exists
-            if os.path.exists("pulseai_video.mp4"):
-                st.success("✅ YouTube Video is Ready!")
-                st.video("pulseai_video.mp4")
-                with open("pulseai_video.mp4", "rb") as f:
-                    st.download_button("💾 Download MP4 Video", f, file_name="pulseai_video.mp4", mime="video/mp4", use_container_width=True)
+            cloud_filename = f"{edition_date_str}_{edition_type.lower()}.mp4"
+            local_exists = os.path.exists(f"pulseai_video_{edition_type.lower()}.mp4")
+            
+            if local_exists:
+                st.success(f"✅ {edition_type} Video Cloud Uploaded!")
+                st.video(f"pulseai_video_{edition_type.lower()}.mp4")
 
 st.markdown("— OR —")
 
@@ -424,8 +444,8 @@ if st.button("📋 Generate Manual LinkedIn Draft", use_container_width=True):
     if not approved:
         st.warning("No approved stories yet. Approve some stories first!")
     else:
-        newsletter = f"🔥 **PulseAI Daily — {selected_date.strftime('%B %d, %Y')}**\n"
-        newsletter += f"*Your daily pulse on Artificial Intelligence*\n\n"
+        newsletter = f"🔥 **Global Pulse AI Daily — {selected_date.strftime('%B %d, %Y')}**\n"
+        newsletter += f"*Your global pulse on Artificial Intelligence*\n\n"
         newsletter += "---\n\n"
 
         for i, s in enumerate(approved[:10], 1):  # top 10
@@ -435,8 +455,8 @@ if st.button("📋 Generate Manual LinkedIn Draft", use_container_width=True):
             newsletter += f"🔗 [Read more]({article.get('url', '#')})\n\n"
 
         newsletter += "---\n"
-        newsletter += "📧 Subscribe to PulseAI for daily AI updates\n"
-        newsletter += "#AI #ArtificialIntelligence #PulseAI #AINews #TechNews"
+        newsletter += "📧 Subscribe to Global Pulse AI for daily AI updates\n"
+        newsletter += "#AI #ArtificialIntelligence #GlobalPulseAI #AINews #TechNews"
 
         st.text_area(
             "Copy and paste this into LinkedIn:",

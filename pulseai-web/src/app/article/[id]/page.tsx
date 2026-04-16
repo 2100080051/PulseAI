@@ -5,12 +5,14 @@ import { notFound } from 'next/navigation'
 
 export const revalidate = 60
 
-export default async function ArticlePage({ params }: { params: { id: string } }) {
+export default async function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  
   // Fetch specific summary + article metadata
   const { data: summary, error } = await supabase
     .from('summaries')
     .select('*, articles(title, url, source, fetched_at)')
-    .eq('id', params.id)
+    .eq('id', resolvedParams.id)
     .single()
 
   if (error || !summary) {
