@@ -361,6 +361,61 @@ with tab_distribution:
                             else:
                                 st.error(f"Failed to post: {result.get('message')}")
 
+    st.divider()
+    
+    # Podcast Studio
+    st.markdown("## 🎙️ PulseAI Podcast Studio (Beta)")
+    st.info("Uses LLM logic to write a conversational radio script from your approved stories, then synthesizes an audio MP3 using Edge TTS.")
+    
+    with st.container(border=True):
+        import os
+        
+        col_gen1, col_gen2 = st.columns(2)
+        
+        with col_gen1:
+            if st.button("🎙️ Write Script & Generate MP3", use_container_width=True, type="primary"):
+                approved = get_approved_summaries(edition_date_str)
+                if not approved:
+                    st.warning("No approved stories found. Can't write a script!")
+                else:
+                    from backend.audio.scriptwriter import generate_podcast_script
+                    from backend.audio.generator import generate_podcast_audio
+                    
+                    with st.spinner("✍️ Writing podcast script..."):
+                        script = generate_podcast_script(approved)
+                    
+                    if script:
+                        with st.spinner("🗣️ Synthesizing Voice (Edge TTS)..."):
+                            audio_file = generate_podcast_audio(script, output_path="pulseai_daily.mp3")
+                        st.rerun() # Refresh to show new audio
+
+            # Always display MP3 if it exists
+            if os.path.exists("pulseai_daily.mp3"):
+                st.success("✅ Podcast Audio is Ready!")
+                st.audio("pulseai_daily.mp3")
+                with open("pulseai_daily.mp3", "rb") as f:
+                    st.download_button("💾 Download MP3 Audio", f, file_name="pulseai_daily.mp3", mime="audio/mpeg", use_container_width=True)
+                            
+        with col_gen2:
+            st.markdown("**🎬 YouTube Video Generator**")
+            st.caption("Converts your MP3 into a YouTube-ready MP4 Video.")
+            
+            if st.button("🎬 Render YouTube MP4", use_container_width=True):
+                if not os.path.exists("pulseai_daily.mp3"):
+                    st.error("You must generate the MP3 Audio first!")
+                else:
+                    from backend.audio.video_generator import generate_mp4_from_audio
+                    with st.spinner("🎥 Rendering Video... this may take 30-60 seconds..."):
+                        video_file = generate_mp4_from_audio("pulseai_daily.mp3", output_path="pulseai_video.mp4")
+                        st.rerun() # Refresh to show new video
+            
+            # Always display MP4 if it exists
+            if os.path.exists("pulseai_video.mp4"):
+                st.success("✅ YouTube Video is Ready!")
+                st.video("pulseai_video.mp4")
+                with open("pulseai_video.mp4", "rb") as f:
+                    st.download_button("💾 Download MP4 Video", f, file_name="pulseai_video.mp4", mime="video/mp4", use_container_width=True)
+
 st.markdown("— OR —")
 
 if st.button("📋 Generate Manual LinkedIn Draft", use_container_width=True):
