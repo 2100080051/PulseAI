@@ -26,3 +26,9 @@ uvicorn==0.34.0
 # Utilities
 python-dotenv==1.0.1
 httpx==0.27.2
+
+# Podcast & Video Generation
+edge-tts
+moviepy
+Pillow
+imageio[ffmpeg]
