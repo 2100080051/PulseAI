@@ -309,9 +309,58 @@ else:
 
 st.divider()
 
+# Email Newsletter Blast
+st.markdown("### 📧 Send Email Newsletter")
+if st.button("🚀 Blast Daily Newsletter vla Resend", use_container_width=True, type="primary"):
+    from backend.newsletter.resend_mailer import blast_newsletter
+    with st.spinner("Dispatching emails via Resend..."):
+        result = blast_newsletter()
+        if result.get("status") == "success":
+            st.success(f"✅ Successfully sent to {result.get('emails_sent')} active subscribers!")
+        elif result.get("status") == "no_stories":
+            st.warning("No approved stories for today. Approve some stories first.")
+        elif result.get("status") == "no_subscribers":
+            st.warning("No active email subscribers found in the database.")
+        else:
+            st.error(f"Failed to send: {result.get('message')}")
+
+
+
 # LinkedIn Newsletter Export
 st.markdown("### 📤 Export for LinkedIn Newsletter")
-if st.button("📋 Generate LinkedIn Newsletter Draft", use_container_width=True):
+
+approved = get_approved_summaries(edition_date_str)
+if not approved:
+    st.warning("No approved stories found. Approve some stories first!")
+else:
+    st.info("Select the exact stories you want to feature in today's LinkedIn post:")
+    selected_linkedin_ids = []
+    
+    with st.container(border=True):
+        for s in approved:
+            article = s.get('articles') or {}
+            title = article.get('title', 'Unknown')
+            # Checkbox for each approved story
+            if st.checkbox(f"🔗 {title}", value=True, key=f"li_post_{s['id']}"):
+                selected_linkedin_ids.append(s["id"])
+
+    if st.button("🚀 Auto-Post Selected Stories to LinkedIn", use_container_width=True, type="primary"):
+        if not selected_linkedin_ids:
+            st.error("You must select at least one story!")
+        else:
+            from backend.newsletter.linkedin_bot import blast_linkedin
+            with st.spinner("Posting to LinkedIn via API..."):
+                result = blast_linkedin(selected_ids=selected_linkedin_ids)
+                if result.get("status") == "success":
+                    st.success(f"✅ Successfully posted to your LinkedIn Profile!")
+                elif result.get("status") == "no_stories":
+                    st.warning("No approved stories for today. Approve stories first.")
+                else:
+                    st.error(f"Failed to post: {result.get('message')}")
+
+st.markdown("— OR —")
+
+if st.button("📋 Generate Manual LinkedIn Draft", use_container_width=True):
     approved = get_approved_summaries(edition_date_str)
     if not approved:
         st.warning("No approved stories yet. Approve some stories first!")

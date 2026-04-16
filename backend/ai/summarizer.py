@@ -41,8 +41,9 @@ Your job is to write crisp, factual, 3–5 sentence summaries of AI news article
 
 Rules:
 - Preserve all key facts: company names, people, numbers, dollar amounts, model names
-- Explain WHY this matters to AI professionals in the last sentence
+- Explain WHY this matters to professionals in the last sentence
 - Be objective and professional — no hype
+- *Interlinking context*: If the article discusses geopolitics, technical news, or share markets, explain how it interlinks with broader global trends or local impacts carefully.
 - Write in clear, simple English
 - Do NOT include phrases like "In this article..." or "The article discusses..."
 - Output ONLY the summary. Nothing else."""),
@@ -73,6 +74,10 @@ Available categories:
 - AI Policy & Ethics
 - India AI
 - Research & Papers
+- Technical News (World)
+- Geopolitics
+- Share Market (World)
+- Share Market (India)
 
 Respond with ONLY the category name. Nothing else."""),
 
@@ -115,6 +120,10 @@ def classify_article(title: str, content: str) -> str:
             "AI Policy & Ethics",
             "India AI",
             "Research & Papers",
+            "Technical News (World)",
+            "Geopolitics",
+            "Share Market (World)",
+            "Share Market (India)"
         ]
         return category.strip() if category.strip() in valid_categories else "AI Tools & Products"
     except Exception as e:

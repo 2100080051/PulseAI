@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS articles (
     url         TEXT NOT NULL,
     source      TEXT NOT NULL,
     raw_content TEXT,
+    image_url   TEXT,
     category    TEXT NOT NULL DEFAULT 'AI Tools & Products',
     fetched_at  TIMESTAMPTZ DEFAULT NOW()
 );

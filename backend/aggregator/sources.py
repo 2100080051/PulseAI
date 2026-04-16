@@ -85,6 +85,27 @@ RSS_FEEDS = [
         "url": "https://techcrunch.com/category/startups/feed/",
         "category": "Funding & Acquisitions",
     },
+    # === Macro & World ===
+    {
+        "name": "Reuters World News",
+        "url": "https://www.reutersagency.com/feed/?best-topics=world-news&type=rss",
+        "category": "Geopolitics",
+    },
+    {
+        "name": "CNBC Tech",
+        "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910",
+        "category": "Technical News (World)",
+    },
+    {
+        "name": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/news/rssindex",
+        "category": "Share Market (World)",
+    },
+    {
+        "name": "Moneycontrol Markets",
+        "url": "https://www.moneycontrol.com/rss/marketreports.xml",
+        "category": "Share Market (India)",
+    },
 ]
 
 # === NewsAPI Queries ===
@@ -96,4 +117,8 @@ NEWSAPI_QUERIES = [
     {"q": "AI regulation policy", "category": "AI Policy & Ethics"},
     {"q": "India AI technology", "category": "India AI"},
     {"q": "machine learning research", "category": "Research & Papers"},
+    {"q": "global geopolitics OR foreign affairs", "category": "Geopolitics"},
+    {"q": "technology news silicon valley", "category": "Technical News (World)"},
+    {"q": "stock market OR wall street", "category": "Share Market (World)"},
+    {"q": "nse bse share market india", "category": "Share Market (India)"},
 ]

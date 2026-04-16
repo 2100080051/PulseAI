@@ -48,6 +48,7 @@ def save_article(
     source: str,
     category: str,
     raw_content: Optional[str] = None,
+    image_url: Optional[str] = None,
 ) -> Optional[str]:
     """
     Insert a new article into Supabase. Returns article ID if inserted.
@@ -67,6 +68,7 @@ def save_article(
             "url": url,
             "source": source,
             "raw_content": (raw_content or "")[:5000],  # cap content length
+            "image_url": image_url,
             "category": category,
             "fetched_at": datetime.now(timezone.utc).isoformat(),
         }).execute()
@@ -99,6 +101,12 @@ def fetch_rss_source(feed_config: dict) -> list[str]:
             article_url = getattr(entry, "link", None)
             article_title = getattr(entry, "title", "Untitled")
             raw_content = getattr(entry, "summary", None) or getattr(entry, "description", None)
+            
+            image_url = None
+            if "media_thumbnail" in entry and entry.media_thumbnail:
+                image_url = entry.media_thumbnail[0]["url"]
+            elif "media_content" in entry and entry.media_content:
+                image_url = entry.media_content[0]["url"]
 
             if not article_url:
                 continue
@@ -109,6 +117,7 @@ def fetch_rss_source(feed_config: dict) -> list[str]:
                 source=name,
                 category=category,
                 raw_content=raw_content,
+                image_url=image_url,
             )
             if article_id:
                 saved_ids.append(article_id)
@@ -165,6 +174,7 @@ def fetch_newsapi_query(query_config: dict) -> list[str]:
             article_url = article.get("url", "")
             article_title = article.get("title", "Untitled")
             raw_content = article.get("description", "") or article.get("content", "")
+            image_url = article.get("urlToImage")
             source_name = article.get("source", {}).get("name", "NewsAPI")
 
             if not article_url or article_url == "https://removed.com":
@@ -176,6 +186,7 @@ def fetch_newsapi_query(query_config: dict) -> list[str]:
                 source=source_name,
                 category=category,
                 raw_content=raw_content,
+                image_url=image_url,
             )
             if article_id:
                 saved_ids.append(article_id)
