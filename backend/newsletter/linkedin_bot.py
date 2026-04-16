@@ -47,28 +47,31 @@ def post_to_linkedin(author_urn: str, text: str, article_url: str, article_title
         "Content-Type": "application/json"
     }
     
-    media_block = {
-        "status": "READY",
-        "originalUrl": article_url,
-        "title": {
-            "text": article_title[:200]
+    share_content = {
+        "shareCommentary": {
+            "text": text
         }
     }
     
     if image_url:
-        media_block["thumbnails"] = [{"url": image_url}]
+        media_block = {
+            "status": "READY",
+            "originalUrl": article_url,
+            "title": {
+                "text": article_title[:200]
+            },
+            "thumbnails": [{"url": image_url}]
+        }
+        share_content["shareMediaCategory"] = "ARTICLE"
+        share_content["media"] = [media_block]
+    else:
+        share_content["shareMediaCategory"] = "NONE"
         
     payload = {
         "author": author_urn,
         "lifecycleState": "PUBLISHED",
         "specificContent": {
-            "com.linkedin.ugc.ShareContent": {
-                "shareCommentary": {
-                    "text": text
-                },
-                "shareMediaCategory": "ARTICLE",
-                "media": [media_block]
-            }
+            "com.linkedin.ugc.ShareContent": share_content
         },
         "visibility": {
             "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"

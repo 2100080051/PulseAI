@@ -218,145 +218,148 @@ st.markdown(f"**Edition:** {selected_date.strftime('%B %d, %Y')} &nbsp;|&nbsp; R
 stats = get_stats(edition_date_str)
 total = sum(stats.values())
 
-col1, col2, col3, col4, col5 = st.columns(5)
-with col1:
-    st.metric("📊 Total Stories", total)
-with col2:
-    st.metric("⏳ Pending", stats["pending"])
-with col3:
-    st.metric("✅ Approved", stats["approved"])
-with col4:
-    st.metric("✏️ Edited", stats["edited"])
-with col5:
-    st.metric("❌ Rejected", stats["rejected"])
+with st.container(border=True):
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("📊 Total Stories", total)
+    col2.metric("⏳ Pending", stats.get("pending", 0))
+    col3.metric("✅ Approved", stats.get("approved", 0))
+    col4.metric("✏️ Edited", stats.get("edited", 0))
+    col5.metric("❌ Rejected", stats.get("rejected", 0))
 
-st.divider()
+st.write("")
 
-# Load summaries
-summaries = load_summaries(status_filter, edition_date_str)
+# Create Tabs
+tab_queue, tab_distribution = st.tabs(["📋 Editorial Queue", "🚀 Distribution Hub"])
 
-if not summaries:
-    st.info(
-        "📭 No summaries found for this date/filter.\n\n"
-        "Run the pipeline from the sidebar to fetch and summarize today's AI news."
-    )
-else:
-    st.markdown(f"### 📋 Stories ({len(summaries)} shown)")
+with tab_queue:
+    # Load summaries
+    summaries = load_summaries(status_filter, edition_date_str)
 
-    for summary in summaries:
-        article = summary.get("articles") or {}
-        title = article.get("title", "Untitled")
-        source = article.get("source", "Unknown")
-        url = article.get("url", "#")
-        category = summary.get("category", "AI Tools & Products")
-        summary_id = summary["id"]
-        current_status = summary["status"]
-        current_text = summary["summary_text"]
-        color = CATEGORY_COLORS.get(category, "#64748b")
+    if not summaries:
+        st.info(
+            "📭 No summaries found for this date/filter.\n\n"
+            "Run the pipeline from the sidebar to fetch and summarize today's AI news."
+        )
+    else:
+        st.markdown(f"### 📋 Review Queue ({len(summaries)} stories)")
 
-        with st.expander(
-            f"{'🟡' if current_status == 'pending' else '🟢' if current_status in ['approved','edited'] else '🔴'} "
-            f"{title[:80]}",
-            expanded=(current_status == "pending"),
-        ):
-            # Source + Category
-            col_a, col_b = st.columns([3, 1])
-            with col_a:
-                st.markdown(f"<div class='source-tag'>📰 {source} &nbsp;|&nbsp; <a href='{url}' target='_blank'>Read Original ↗</a></div>", unsafe_allow_html=True)
-            with col_b:
-                st.markdown(
-                    f"<span style='background:{color};color:white;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600'>{category}</span>",
-                    unsafe_allow_html=True,
+        for summary in summaries:
+            article = summary.get("articles") or {}
+            title = article.get("title", "Untitled")
+            source = article.get("source", "Unknown")
+            url = article.get("url", "#")
+            category = summary.get("category", "AI Tools & Products")
+            summary_id = summary["id"]
+            current_status = summary["status"]
+            current_text = summary["summary_text"]
+            color = CATEGORY_COLORS.get(category, "#64748b")
+
+            with st.expander(
+                f"{'🟡' if current_status == 'pending' else '🟢' if current_status in ['approved','edited'] else '🔴'} "
+                f"{title[:80]}",
+                expanded=(current_status == "pending"),
+            ):
+                # Source + Category
+                col_a, col_b = st.columns([3, 1])
+                with col_a:
+                    st.markdown(f"<div class='source-tag'>📰 {source} &nbsp;|&nbsp; <a href='{url}' target='_blank'>Read Original ↗</a></div>", unsafe_allow_html=True)
+                with col_b:
+                    st.markdown(
+                        f"<span style='background:{color};color:white;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600'>{category}</span>",
+                        unsafe_allow_html=True,
+                    )
+
+                st.markdown("**AI Summary:**")
+                new_text = st.text_area(
+                    label="Summary",
+                    value=current_text,
+                    key=f"text_{summary_id}",
+                    height=120,
+                    label_visibility="collapsed",
                 )
 
-            st.markdown("**AI Summary:**")
-            new_text = st.text_area(
-                label="Summary",
-                value=current_text,
-                key=f"text_{summary_id}",
-                height=120,
-                label_visibility="collapsed",
-            )
+                new_category = st.selectbox(
+                    "Category",
+                    options=CATEGORIES,
+                    index=CATEGORIES.index(category) if category in CATEGORIES else 0,
+                    key=f"cat_{summary_id}",
+                )
 
-            new_category = st.selectbox(
-                "Category",
-                options=CATEGORIES,
-                index=CATEGORIES.index(category) if category in CATEGORIES else 0,
-                key=f"cat_{summary_id}",
-            )
+                # Action buttons
+                btn_col1, btn_col2, btn_col3 = st.columns(3)
+                with btn_col1:
+                    if st.button("✅ Approve", key=f"approve_{summary_id}", use_container_width=True, type="primary"):
+                        status = "edited" if new_text != current_text else "approved"
+                        update_summary(summary_id, new_text, new_category, status)
+                        st.success("Approved!")
+                        st.cache_data.clear()
+                        st.rerun()
+                with btn_col2:
+                    if st.button("✏️ Save Edit", key=f"edit_{summary_id}", use_container_width=True):
+                        update_summary(summary_id, new_text, new_category, "edited")
+                        st.info("Saved as edited")
+                        st.cache_data.clear()
+                        st.rerun()
+                with btn_col3:
+                    if st.button("❌ Reject", key=f"reject_{summary_id}", use_container_width=True):
+                        update_summary(summary_id, current_text, new_category, "rejected")
+                        st.warning("Rejected")
+                        st.cache_data.clear()
+                        st.rerun()
 
-            # Action buttons
-            btn_col1, btn_col2, btn_col3 = st.columns(3)
-            with btn_col1:
-                if st.button("✅ Approve", key=f"approve_{summary_id}", use_container_width=True, type="primary"):
-                    status = "edited" if new_text != current_text else "approved"
-                    update_summary(summary_id, new_text, new_category, status)
-                    st.success("Approved!")
-                    st.cache_data.clear()
-                    st.rerun()
-            with btn_col2:
-                if st.button("✏️ Save Edit", key=f"edit_{summary_id}", use_container_width=True):
-                    update_summary(summary_id, new_text, new_category, "edited")
-                    st.info("Saved as edited")
-                    st.cache_data.clear()
-                    st.rerun()
-            with btn_col3:
-                if st.button("❌ Reject", key=f"reject_{summary_id}", use_container_width=True):
-                    update_summary(summary_id, current_text, new_category, "rejected")
-                    st.warning("Rejected")
-                    st.cache_data.clear()
-                    st.rerun()
-
-st.divider()
-
-# Email Newsletter Blast
-st.markdown("### 📧 Send Email Newsletter")
-if st.button("🚀 Blast Daily Newsletter vla Resend", use_container_width=True, type="primary"):
-    from backend.newsletter.resend_mailer import blast_newsletter
-    with st.spinner("Dispatching emails via Resend..."):
-        result = blast_newsletter()
-        if result.get("status") == "success":
-            st.success(f"✅ Successfully sent to {result.get('emails_sent')} active subscribers!")
-        elif result.get("status") == "no_stories":
-            st.warning("No approved stories for today. Approve some stories first.")
-        elif result.get("status") == "no_subscribers":
-            st.warning("No active email subscribers found in the database.")
-        else:
-            st.error(f"Failed to send: {result.get('message')}")
-
-
-
-# LinkedIn Newsletter Export
-st.markdown("### 📤 Export for LinkedIn Newsletter")
-
-approved = get_approved_summaries(edition_date_str)
-if not approved:
-    st.warning("No approved stories found. Approve some stories first!")
-else:
-    st.info("Select the exact stories you want to feature in today's LinkedIn post:")
-    selected_linkedin_ids = []
+with tab_distribution:
+    st.markdown("## 🚀 Multi-Channel Distribution Hub")
+    st.info("Approve stories in the Editorial Queue tab first, then publish them to Email and Social Media here!")
     
-    with st.container(border=True):
-        for s in approved:
-            article = s.get('articles') or {}
-            title = article.get('title', 'Unknown')
-            # Checkbox for each approved story
-            if st.checkbox(f"🔗 {title}", value=True, key=f"li_post_{s['id']}"):
-                selected_linkedin_ids.append(s["id"])
+    col_em, col_li = st.columns(2)
+    
+    with col_em:
+        st.markdown("### 📧 Email Newsletter")
+        with st.container(border=True):
+            st.markdown("Blast today's approved stories to your **Resend** active subscriber list.")
+            if st.button("🚀 Send Email Blast", use_container_width=True, type="primary"):
+                from backend.newsletter.resend_mailer import blast_newsletter
+                with st.spinner("Dispatching emails via Resend..."):
+                    result = blast_newsletter()
+                    if result.get("status") == "success":
+                        st.success(f"✅ Sent to {result.get('emails_sent')} subscribers!")
+                    elif result.get("status") == "no_stories":
+                        st.warning("No approved stories for today.")
+                    elif result.get("status") == "no_subscribers":
+                        st.warning("No active email subscribers found.")
+                    else:
+                        st.error(f"Failed to send: {result.get('message')}")
+                        
+    with col_li:
+        st.markdown("### 📤 LinkedIn Automation")
+        with st.container(border=True):
+            approved = get_approved_summaries(edition_date_str)
+            if not approved:
+                st.warning("No approved stories found.")
+            else:
+                st.markdown("Select stories for the **LinkedIn Daily Briefing**:")
+                selected_linkedin_ids = []
+                
+                with st.expander("📝 Manage Stories Checklist", expanded=True):
+                    for s in approved:
+                        article = s.get('articles') or {}
+                        title = article.get('title', 'Unknown')
+                        if st.checkbox(f"🔗 {title}", value=True, key=f"li_post_{s['id']}"):
+                            selected_linkedin_ids.append(s["id"])
 
-    if st.button("🚀 Auto-Post Selected Stories to LinkedIn", use_container_width=True, type="primary"):
-        if not selected_linkedin_ids:
-            st.error("You must select at least one story!")
-        else:
-            from backend.newsletter.linkedin_bot import blast_linkedin
-            with st.spinner("Posting to LinkedIn via API..."):
-                result = blast_linkedin(selected_ids=selected_linkedin_ids)
-                if result.get("status") == "success":
-                    st.success(f"✅ Successfully posted to your LinkedIn Profile!")
-                elif result.get("status") == "no_stories":
-                    st.warning("No approved stories for today. Approve stories first.")
-                else:
-                    st.error(f"Failed to post: {result.get('message')}")
+                if st.button("🚀 Auto-Post to LinkedIn", use_container_width=True, type="primary"):
+                    if not selected_linkedin_ids:
+                        st.error("Select at least one story!")
+                    else:
+                        from backend.newsletter.linkedin_bot import blast_linkedin
+                        with st.spinner("Posting to LinkedIn..."):
+                            result = blast_linkedin(selected_ids=selected_linkedin_ids)
+                            if result.get("status") == "success":
+                                st.success(f"✅ Posted Successfully!")
+                            elif result.get("status") == "no_stories":
+                                st.warning("No approved stories.")
+                            else:
+                                st.error(f"Failed to post: {result.get('message')}")
 
 st.markdown("— OR —")
 
