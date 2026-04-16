@@ -67,23 +67,28 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-blue-600 selection:text-white">
+    <main className="min-h-screen bg-slate-950 text-slate-200 relative overflow-hidden">
+      {/* Ambient glowing orb background effect */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyan-600/20 blur-[150px] rounded-full pointer-events-none -z-10" />
+
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-blue-500 fill-blue-500" />
-            <span className="text-xl font-bold font-sans tracking-tight text-white">Global Pulse AI</span>
+      <header className="border-b border-white/5 bg-slate-950/60 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg shadow-lg shadow-cyan-500/20">
+               <Zap className="w-5 h-5 text-white fill-white" />
+            </div>
+            <span className="text-2xl font-bold font-outfit tracking-tight text-white">Global Pulse AI</span>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="max-w-5xl mx-auto px-6 py-20 text-center">
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter mb-6 bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent">
+      <section className="max-w-5xl mx-auto px-6 py-24 text-center">
+        <h1 className="text-6xl md:text-8xl font-extrabold font-outfit tracking-tighter mb-8 bg-gradient-to-r from-blue-300 via-cyan-200 to-emerald-200 bg-clip-text text-transparent leading-[1.1]">
           The ultimate pulse <br />on Artificial Intelligence.
         </h1>
-        <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10">
+        <p className="text-lg md:text-xl text-slate-400/90 max-w-2xl mx-auto mb-10 font-medium leading-relaxed">
           Professional, jargon-free, AI-generated executive summaries covering the biggest breakthroughs in LLMs, Healthcare, and Tech.
         </p>
       </section>
@@ -101,7 +106,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
                   <Link 
                     key={cat} 
                     href={cat === "All" ? "/" : `/?category=${encodeURIComponent(cat)}`}
-                    className={`block px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                    className={`block px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 border ${isActive ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] border-cyan-400/50 scale-[1.02]' : 'bg-slate-900/40 text-slate-400 border-white/5 hover:bg-slate-800/80 hover:text-slate-200 hover:border-white/10'}`}
                   >
                     {cat}
                   </Link>
@@ -125,14 +130,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
 
               {/* Podcasts Section */}
               {data.podcasts.length > 0 && (
-                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                <div className="grid sm:grid-cols-2 gap-6 mb-12">
                   {data.podcasts.map((pod: any, i: number) => (
-                    <div key={i} className="rounded-2xl overflow-hidden bg-black border border-slate-800">
-                      <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center gap-2">
-                        <PlayCircle className="w-4 h-4 text-blue-400" />
-                        <span className="text-sm font-bold text-slate-300 capitalize">{pod.name} Update</span>
+                    <div key={i} className="rounded-2xl overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-cyan-500/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] group transition-all duration-500 hover:border-cyan-400/50 hover:shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+                      <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3 flex items-center justify-between border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                          <PlayCircle className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-bold font-outfit text-slate-200 tracking-wide capitalize">{pod.name} Update</span>
+                        </div>
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                       </div>
-                      <video src={pod.url} controls preload="metadata" className="w-full aspect-video" poster="/api/placeholder/1920/1080" />
+                      <video src={pod.url} controls preload="metadata" className="w-full aspect-video object-cover" poster="/api/placeholder/1920/1080" />
                     </div>
                   ))}
                 </div>
@@ -140,24 +148,27 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
 
               <div className="grid gap-6">
                 {data.stories.map((summary: any) => (
-                <Link key={summary.id} href={`/article/${summary.id}`} className="group block">
-                  <article className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition-colors duration-300">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                <Link key={summary.id} href={`/article/${summary.id}`} className="group block outline-none">
+                  <article className="p-7 rounded-2xl bg-slate-900/40 backdrop-blur-md border border-white/5 hover:border-cyan-500/30 hover:bg-slate-800/60 hover:-translate-y-1 hover:shadow-2xl hover:shadow-cyan-500/10 transition-all duration-400 ease-out h-full flex flex-col justify-between">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-4">
                       <div className="flex-1">
-                        <span className="inline-block px-3 py-1 text-xs font-semibold tracking-wider text-blue-400 bg-blue-400/10 rounded-full mb-4">
+                        <span className="inline-block px-3 py-1 text-xs font-bold tracking-widest uppercase text-cyan-400 bg-cyan-400/10 rounded-full mb-5 border border-cyan-400/20">
                           {summary.category}
                         </span>
-                        <h3 className="text-xl font-bold text-slate-100 group-hover:text-blue-400 transition-colors duration-300 mb-3">
+                        <h3 className="text-2xl font-bold font-outfit text-slate-100 group-hover:text-cyan-300 transition-colors duration-300 mb-4 leading-snug">
                           {summary.articles?.title}
                         </h3>
-                        <p className="text-slate-400 leading-relaxed text-sm md:text-base line-clamp-3">
+                        <p className="text-slate-400/90 leading-relaxed text-sm md:text-[15px] line-clamp-3">
                           {summary.summary_text}
                         </p>
                       </div>
-                      <div className="hidden md:flex flex-col items-end">
-                        <span className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-1">Source</span>
-                        <span className="text-sm font-semibold text-slate-300">{summary.articles?.source}</span>
+                      <div className="hidden md:flex flex-col items-end shrink-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Source</span>
+                        <span className="text-sm font-semibold text-slate-300 bg-slate-800 px-3 py-1 rounded-md">{summary.articles?.source}</span>
                       </div>
+                    </div>
+                    <div className="flex items-center text-xs font-bold text-cyan-500/0 group-hover:text-cyan-400 transition-all duration-300 pt-4 border-t border-white/5 mt-auto">
+                      Read Executive Summary &rarr;
                     </div>
                   </article>
                 </Link>
