@@ -7,6 +7,7 @@ Also classifies articles into categories.
 import os
 import logging
 from datetime import date
+from typing import Optional
 
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
