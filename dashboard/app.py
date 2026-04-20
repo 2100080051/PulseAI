@@ -439,27 +439,55 @@ with tab_distribution:
 
 st.markdown("— OR —")
 
-if st.button("📋 Generate Manual LinkedIn Draft", use_container_width=True):
+if "linkedin_draft" not in st.session_state:
+    st.session_state.linkedin_draft = ""
+if "filtered_stories" not in st.session_state:
+    st.session_state.filtered_stories = []
+
+if st.button("✍️ Ghostwrite Viral LinkedIn Post", use_container_width=True):
     approved = get_approved_summaries(edition_date_str)
     if not approved:
         st.warning("No approved stories yet. Approve some stories first!")
     else:
-        newsletter = f"🔥 **Global Pulse AI Daily — {selected_date.strftime('%B %d, %Y')}**\n"
-        newsletter += f"*Your global pulse on Artificial Intelligence*\n\n"
-        newsletter += "---\n\n"
+        # Execute Evening/Morning Routing Logic
+        MORNING_CATEGORIES = ['LLMs & Foundation Models', 'AI Tools & Products', 'AI in Healthcare', 'Research & Papers', 'India AI']
+        EVENING_CATEGORIES = ['Funding & Acquisitions', 'Market News', 'AI Policy & Ethics']
+        
+        filtered = []
+        if edition_type == "Morning":
+            filtered = [s for s in approved if s.get('category') in MORNING_CATEGORIES]
+        elif edition_type == "Evening":
+            filtered = [s for s in approved if s.get('category') in EVENING_CATEGORIES]
+            # Evening Fallback logic exactly as User requested
+            if len(filtered) == 0:
+                st.info("No Finance/Political stories found today. Falling back to the rest of the Tech morning news!")
+                filtered = [s for s in approved if s.get('category') in MORNING_CATEGORIES]
+                
+        if len(filtered) == 0:
+            filtered = approved # Absolute fallback
+            
+        st.session_state.filtered_stories = filtered
+        
+        from backend.newsletter.linkedin_bot import generate_linkedin_draft
+        with st.spinner("🤖 Groq AI is ghostwriting your viral post..."):
+            draft = generate_linkedin_draft(filtered, edition_type)
+            st.session_state.linkedin_draft = draft
+        st.rerun()
 
-        for i, s in enumerate(approved[:10], 1):  # top 10
-            article = s.get("articles") or {}
-            newsletter += f"**{i}. {article.get('title', 'Story')}**\n"
-            newsletter += f"{s['summary_text']}\n"
-            newsletter += f"🔗 [Read more]({article.get('url', '#')})\n\n"
-
-        newsletter += "---\n"
-        newsletter += "📧 Subscribe to Global Pulse AI for daily AI updates\n"
-        newsletter += "#AI #ArtificialIntelligence #GlobalPulseAI #AINews #TechNews"
-
-        st.text_area(
-            "Copy and paste this into LinkedIn:",
-            value=newsletter,
-            height=400,
-        )
+if st.session_state.linkedin_draft:
+    # Display the drafted text in a text area so the user can freely edit it before posting!
+    edited_draft = st.text_area(
+        "Review & Edit Draft before posting to LinkedIn:",
+        value=st.session_state.linkedin_draft,
+        height=400,
+    )
+    
+    if st.button("🚀 Approve & Auto-Post to LinkedIn", type="primary", use_container_width=True):
+        from backend.newsletter.linkedin_bot import execute_linkedin_post
+        with st.spinner("Transmitting safely to LinkedIn API..."):
+            main_article = st.session_state.filtered_stories[0].get("articles", {}) if st.session_state.filtered_stories else {}
+            resp = execute_linkedin_post(edited_draft, main_article)
+            if resp.get("status") == "success":
+                st.success(f"✅ Successfully viral-posted to LinkedIn! Posted to {resp.get('posted_count')} profiles.")
+            else:
+                st.error(f"Failed to post: {resp.get('message')}")

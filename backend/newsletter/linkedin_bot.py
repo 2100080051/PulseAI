@@ -3,6 +3,11 @@ import sys
 import logging
 import requests
 from datetime import date
+from typing import List, Dict, Any
+
+from langchain_groq import ChatGroq
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.output_parser import StrOutputParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from backend.db.client import get_supabase
@@ -114,61 +119,10 @@ def blast_linkedin(selected_ids=None):
     if not stories:
         return {"status": "no_stories", "message": "No approved stories to post."}
         
-    # Build a structured, beautiful Newsletter post
-    date_str = date.today().strftime("%B %d, %Y")
+    post_text = generate_linkedin_draft(stories)
+    main_article = stories[0].get('articles', {})
     
-    post_text = f"📰 The PulseAI Daily Briefing — {date_str}\n"
-    post_text += "Here are the most critical updates in Artificial Intelligence & Macro Tech Markets today:\n\n"
-    
-    for idx, story in enumerate(stories, 1):
-        article = story.get('articles') or {}
-        title = article.get('title', 'AI Update')
-        category = story.get('category', 'AI News')
-        
-        # Make the summary concise for social
-        summary = story.get('summary_text', '')
-        if len(summary) > 200:
-            summary = summary[:197] + "..."
-            
-        article_url = article.get('url', '')
-            
-        post_text += f"{idx}. 🚨 {title} ({category})\n"
-        post_text += f"   ➤ {summary}\n"
-        post_text += f"   🔗 Read more: {article_url}\n\n"
-        
-    # The primary CTA / Hero article to be the link preview
-    main_article_url = stories[0].get('articles', {}).get('url', 'https://pulseai.com')
-    main_article_title = stories[0].get('articles', {}).get('title', 'PulseAI Briefing')
-    main_image_url = stories[0].get('articles', {}).get('image_url', '')
-
-    post_text += "Read the full stories and subscribe to the daily email newsletter on our platform! 👇\n\n"
-    
-    # Tagging string calculation
-    tag_string = "PulseAI"
-    post_text += f"Automated & Curated by {tag_string}.\n\n"
-    
-    mention_start = post_text.find(tag_string)
-    mention_length = len(tag_string)
-
-    post_text += "#PulseAI #ArtificialIntelligence #TechNews #Innovation #MachineLearning #MacroMarkets"
-    
-    success_count = 0
-    errors = []
-    
-    for author in authors:
-        success, resp = post_to_linkedin(author, post_text, main_article_url, main_article_title, main_image_url)
-        if success:
-            success_count += 1
-            print(f"SUCCESS: Posted to {author}")
-            print(f"RAW RESPONSE ID: {resp.get('id', 'NONE')}")
-        else:
-            errors.append(f"Failed {author}: {resp}")
-            print(f"FAILED to {author}: {resp}")
-            
-    if success_count > 0:
-        return {"status": "success", "posted_count": success_count, "errors": errors}
-    else:
-        return {"status": "error", "message": str(errors)}
+    return execute_linkedin_post(post_text, main_article)
 
 if __name__ == "__main__":
     result = blast_linkedin()
