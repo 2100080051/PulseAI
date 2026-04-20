@@ -90,6 +90,101 @@ def post_to_linkedin(author_urn: str, text: str, article_url: str, article_title
         logger.error(f"Failed to post for author {author_urn}: {response.text}")
         return False, response.text
 
+def generate_linkedin_draft(stories: List[Dict[str, Any]], edition_type: str = "Morning") -> str:
+    """Uses Groq LLM to write a high-engagement, viral LinkedIn post under 3,000 characters."""
+    if not stories:
+        return ""
+        
+    date_str = date.today().strftime('%B %d, %Y')
+    
+    # Prepare the payload
+    story_texts = []
+    for idx, story in enumerate(stories, 1):
+        article = story.get("articles") or {}
+        title = article.get("title", "")
+        summary = story.get("summary_text", "")
+        url = article.get("url", "")
+        story_texts.append(f"Story {idx}:\nTitle: {title}\nSummary: {summary}\nLink: {url}\n")
+    
+    payload = "\n".join(story_texts)
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an elite Silicon Valley Tech Influencer and ghostwriter. You write highly viral, skimmable LinkedIn posts. "
+                   "Your posts must STRICTLY be under 2,500 characters so they don't break LinkedIn's limits. "
+                   "Your client is 'Global Pulse AI'. "
+                   "Format rules:\n"
+                   "1. Hook: Start with a bold emoji-driven header like '🔥 Global Pulse AI Daily — [Date]'.\n"
+                   "2. Body: Condense each provided story into a highly punchy 1-2 sentence breakdown with a bold title and an emoji. Add the 🔗 link below each. Remove all redundant fluff.\n"
+                   "3. Footer CTA: End the post by asking the user to follow Sri Sai Nikshith Mummidivarapu and Global Pulse AI.\n"
+                   "4. Hashtags: Add a massive wall of targeted tech/AI/finance hashtags at the very bottom.\n"
+                   "5. DO NOT invent stories. ONLY use the stories provided in the payload."),
+        ("user", "Edition Type: {edition_type}\nDate: {date_str}\n\nStories Payload:\n{payload}")
+    ])
+    
+    # Initialize Llama 3 for fast, intelligent formatting
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        logger.error("Missing GROQ_API_KEY")
+        return "Error: Missing GROQ_API_KEY"
+        
+    llm = ChatGroq(temperature=0.7, model_name="llama-3.3-70b-versatile", groq_api_key=api_key)
+    chain = prompt | llm | StrOutputParser()
+    
+    try:
+        draft = chain.invoke({
+            "edition_type": edition_type,
+            "date_str": date_str,
+            "payload": payload
+        })
+        
+        # Inject the exact LinkedIn URL for Sri Sai to ensure absolute formatting safety
+        if "linkedin.com/in/sri-sai" not in draft.lower():
+            draft += "\n\n👉 **Follow me on LinkedIn:** [Sri Sai Nikshith Mummidivarapu](https://www.linkedin.com/in/sri-sai-nikshith-mummidivarapu-b842a2246)"
+            
+        return draft
+    except Exception as e:
+        logger.error(f"Failed to generate LinkedIn Draft: {e}")
+        return f"Error generation draft: {e}"
+
+
+def execute_linkedin_post(post_content: str, main_article: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Blasts the strictly formatted text to the LinkedIn APIs."""
+    if not ACCESS_TOKEN:
+        logger.error("LINKEDIN_ACCESS_TOKEN not found in environment.")
+        return {"status": "error", "message": "Missing API token"}
+        
+    personal_urn = get_personal_urn()
+    authors = []
+    if personal_urn:
+        authors.append(personal_urn)
+    authors.append(COMPANY_URN)
+    
+    if not authors:
+        return {"status": "error", "message": "Could not determine any LinkedIn URNs."}
+        
+    # Get the media block metadata from the first story if available
+    main_url = main_article.get("url", "https://pulseai.com") if main_article else "https://pulseai.com"
+    main_title = main_article.get("title", "Global Pulse AI Daily Update") if main_article else "Global Pulse AI Daily Update"
+    main_image = main_article.get("image_url", "") if main_article else ""
+
+    success_count = 0
+    errors = []
+    
+    for author in authors:
+        success, resp = post_to_linkedin(author, post_content, main_url, main_title, main_image)
+        if success:
+            success_count += 1
+            print(f"SUCCESS: Posted to {author}")
+        else:
+            errors.append(f"Failed {author}: {resp}")
+            print(f"FAILED to {author}: {resp}")
+            
+    if success_count > 0:
+        return {"status": "success", "posted_count": success_count, "errors": errors}
+    else:
+        return {"status": "error", "message": str(errors)}
+
+
 def blast_linkedin(selected_ids=None):
     """Fetches approved stories and posts them to LinkedIn as a structured mini-newsletter."""
     if not ACCESS_TOKEN:
