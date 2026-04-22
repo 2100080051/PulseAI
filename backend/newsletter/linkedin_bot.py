@@ -148,10 +148,10 @@ def generate_linkedin_draft(stories: List[Dict], edition_type: str = "Morning") 
 Your goal is to turn a list of AI news stories into a high-engagement, professional LinkedIn briefing.
 
 CRITICAL FORMATTING RULES:
-1. NO '***' SYMBOLS. Do not use them for headers, separators, or bolding.
-2. USE CLEAR SPACING. Leave an empty line between every major section.
-3. USE BULLET POINTS. Use '•' or '🚀' or '🔹' for lists.
-4. HEADLINES: Use bold text (Unicode bold if possible, or just plain text with a clear emoji) for story headlines.
+1. NO MARKDOWN SYMBOLS: Strictly forbidden to use '**' or '***' or '---'.
+2. USE CLEAR SPACING: Leave an empty line between every major section.
+3. USE BULLET POINTS: Use '•' or '🚀' or '🔹' for lists.
+4. HEADLINES: Use ALL CAPS or Title Case for story headlines. Do NOT use bolding symbols.
 5. NO MARKDOWN HR: Do not use --- or *** to separate news. Use whitespace.
 6. TONE: Professional, slightly hype, but factual.
 7. CTA: End with a question to drive comments.
