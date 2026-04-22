@@ -83,7 +83,7 @@ STYLE:
 - Professional, analytical, and visionary.
 - Explain the 'SO WHAT' for every news item.
 - End with a clear engagement question."""),
-        ("human", "Topic/Focus: {topic_hint}\n\nRecent Stories and Summaries:\n{stories_text}")
+        ("human", "Today's Date: {current_date}\nTopic/Focus: {topic_hint}\n\nRecent Stories and Summaries:\n{stories_text}")
     ])
     
     stories_text = ""
@@ -96,10 +96,13 @@ STYLE:
         
     chain = prompt | llm | StrOutputParser()
     
+    current_date = datetime.now(timezone.utc).strftime("%B %Y")
+    
     logger.info(f"Generating long-form article from {len(summaries)} stories...")
     return chain.invoke({
-        "topic_hint": topic_hint or "Weekly AI Industry Update",
-        "stories_text": stories_text
+        "topic_hint": topic_hint or f"{current_date} AI Industry Update",
+        "stories_text": stories_text,
+        "current_date": current_date
     })
 
 if __name__ == "__main__":
