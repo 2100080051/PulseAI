@@ -230,7 +230,7 @@ with st.container(border=True):
 st.write("")
 
 # Create Tabs
-tab_queue, tab_distribution = st.tabs(["📋 Editorial Queue", "🚀 Distribution Hub"])
+tab_queue, tab_distribution, tab_article = st.tabs(["📋 Editorial Queue", "🚀 Distribution Hub", "✍️ Article Studio"])
 
 with tab_queue:
     # Load summaries
@@ -491,3 +491,44 @@ if st.session_state.linkedin_draft:
                 st.success(f"✅ Successfully viral-posted to LinkedIn! Posted to {resp.get('posted_count')} profiles.")
             else:
                 st.error(f"Failed to post: {resp.get('message')}")
+
+with tab_article:
+    st.markdown("## ✍️ LinkedIn Article Studio")
+    st.info("Synthesize multiple days of news into a high-authority long-form article.")
+    
+    with st.container(border=True):
+        col_art1, col_art2 = st.columns(2)
+        with col_art1:
+            days_to_look = st.slider("📅 Lookback Period (Days)", min_value=1, max_value=30, value=7)
+        with col_art2:
+            art_category = st.selectbox("📂 Focus Category", options=["All"] + CATEGORIES)
+            
+        topic_hint = st.text_input("💡 Article Theme/Topic Hint (Optional)", placeholder="e.g. The impact of LLMs on Healthcare")
+        
+        if st.button("🪄 Draft Long-Form Article", use_container_width=True, type="primary"):
+            from backend.newsletter.article_writer import fetch_summaries_for_article, generate_long_form_article
+            
+            with st.spinner("🧠 Analyzing historical data and synthesizing article..."):
+                summaries = fetch_summaries_for_article(days=days_to_look, category=art_category)
+                if not summaries:
+                    st.warning("No approved stories found for this period/category.")
+                else:
+                    st.session_state.article_draft = generate_long_form_article(summaries, topic_hint)
+                    st.rerun()
+
+    if "article_draft" in st.session_state and st.session_state.article_draft:
+        st.markdown("### 📝 Review Your Article Draft")
+        edited_article = st.text_area(
+            "Edit the draft below before publishing to LinkedIn Articles:",
+            value=st.session_state.article_draft,
+            height=600,
+        )
+        
+        st.download_button(
+            "💾 Download as Text File",
+            edited_article,
+            file_name=f"PulseAI_Article_{date.today().isoformat()}.txt",
+            use_container_width=True
+        )
+        
+        st.success("💡 Tip: Copy this text into a new 'Article' on your LinkedIn profile. Add relevant images to make it pop!")
