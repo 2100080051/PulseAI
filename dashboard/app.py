@@ -469,7 +469,7 @@ if st.button("✍️ Ghostwrite Viral LinkedIn Post", use_container_width=True):
         st.session_state.filtered_stories = filtered
         
         from backend.newsletter.linkedin_bot import generate_linkedin_draft
-        with st.spinner("🤖 Groq AI is ghostwriting your viral post..."):
+        with st.spinner("🤖 OpenRouter AI is ghostwriting your viral post..."):
             draft = generate_linkedin_draft(filtered, edition_type)
             st.session_state.linkedin_draft = draft
         st.rerun()
