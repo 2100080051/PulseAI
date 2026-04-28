@@ -6,7 +6,6 @@ from datetime import date
 from typing import List, Dict, Any
 
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 
@@ -24,19 +23,27 @@ ACCESS_TOKEN = os.environ.get("LINKEDIN_ACCESS_TOKEN")
 # Replace this with the actual company ID extracted from the URL
 COMPANY_URN = "urn:li:organization:114304591"
 
-def get_openrouter_llm():
-    """Returns a ChatOpenAI instance configured for OpenRouter."""
-    return ChatOpenAI(
-        model="google/gemini-2.0-flash-001",
-        openai_api_key=os.environ.get("OPENROUTER_API_KEY"),
-        openai_api_base="https://openrouter.ai/api/v1",
-        temperature=0.7,
-        max_tokens=2000,
-        default_headers={
-            "HTTP-Referer": "https://pulseai.com",
-            "X-Title": "PulseAI"
-        }
-    )
+LINKEDIN_PROFILE_URL = "https://www.linkedin.com/in/sri-sai-nikshith-mummidivarapu-b842a2246"
+
+SYSTEM_PROMPT = """You are a viral LinkedIn Ghostwriter for Global Pulse AI.
+Your goal is to turn a list of AI news stories into a high-engagement, professional LinkedIn briefing.
+
+CRITICAL FORMATTING RULES:
+1. NO MARKDOWN: Do NOT use ** or *** or --- symbols. LinkedIn ignores markdown.
+2. SPACING: Leave an empty line between every story block.
+3. EMOJIS: Use emojis as bullet points (🚀 💰 ⚠️ 📈 🧠 🎬 🏥) for each story.
+4. LENGTH: STRICTLY under 2,500 characters total.
+5. LINKS: Include the original article URL under each story as: 🔗 [url]
+6. CTA: End with: "Follow me for daily AI intelligence 👉 {profile_url}"
+7. HASHTAGS: Include 15+ targeted hashtags on the last line.
+8. DO NOT invent or hallucinate any stories. Use ONLY provided content.
+
+Structure:
+- Hook line (1 punchy sentence about today's pulse)
+- Stories (each: emoji + HEADLINE in caps + 1 sentence + 🔗 link)
+- Question to drive comments
+- CTA with LinkedIn profile URL
+- Hashtags block""".format(profile_url=LINKEDIN_PROFILE_URL)
 
 def get_personal_urn():
     """Fetch the authenticated user's URN from LinkedIn /v2/userinfo endpoint."""
@@ -140,38 +147,73 @@ def blast_linkedin(selected_ids=None):
     return execute_linkedin_post(post_text, main_article)
 
 def generate_linkedin_draft(stories: List[Dict], edition_type: str = "Morning") -> str:
-    """Uses OpenRouter to ghostwrite a high-engagement, clean LinkedIn post."""
-    llm = get_openrouter_llm()
-    
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a viral LinkedIn Ghostwriter for PulseAI.
-Your goal is to turn a list of AI news stories into a high-engagement, professional LinkedIn briefing.
+    """Ghostwrites a viral LinkedIn post. Tries Groq first, falls back to OpenRouter (Gemini)."""
+    if not stories:
+        return ""
 
-CRITICAL FORMATTING RULES:
-1. NO MARKDOWN SYMBOLS: Strictly forbidden to use '**' or '***' or '---'.
-2. USE CLEAR SPACING: Leave an empty line between every major section.
-3. USE BULLET POINTS: Use '•' or '🚀' or '🔹' for lists.
-4. HEADLINES: Use ALL CAPS or Title Case for story headlines. Do NOT use bolding symbols.
-5. NO MARKDOWN HR: Do not use --- or *** to separate news. Use whitespace.
-6. TONE: Professional, slightly hype, but factual.
-7. CTA: End with a question to drive comments.
+    date_str = date.today().strftime('%B %d, %Y')
 
-Structure:
-- Hook: A punchy one-liner about today's AI pulse.
-- Stories: 3-5 stories, each with a headline and a 1-sentence takeaway.
-- Closing: A brief summary of what this means for the industry.
-- Question: A call to action.
-- Hashtags: #PulseAI #AI #TechNews #GenerativeAI"""),
-        ("human", "Edition: {edition_type}\n\nStories:\n{stories_text}")
-    ])
-    
+    # Build the stories payload with URLs included
     stories_text = ""
-    for s in stories:
+    for idx, s in enumerate(stories, 1):
         article = s.get('articles') or {}
-        stories_text += f"Headline: {article.get('title')}\nSummary: {s.get('summary_text')}\n\n"
-        
-    chain = prompt | llm | StrOutputParser()
-    return chain.invoke({"edition_type": edition_type, "stories_text": stories_text})
+        title = article.get('title', 'Update')
+        summary = s.get('summary_text', '')
+        url = article.get('url', '')
+        stories_text += f"Story {idx}:\nHeadline: {title}\nSummary: {summary}\nURL: {url}\n\n"
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", SYSTEM_PROMPT),
+        ("human", "Edition: {edition_type}\nDate: {date_str}\n\nStories:\n{stories_text}")
+    ])
+    invoke_input = {"edition_type": edition_type, "date_str": date_str, "stories_text": stories_text}
+
+    # --- TIER 1: Groq (Llama-3, fastest & free) ---
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if groq_key:
+        try:
+            logger.info("🚀 Trying Groq (Llama-3.3-70B)...")
+            llm = ChatGroq(temperature=0.7, model_name="llama-3.3-70b-versatile", groq_api_key=groq_key)
+            draft = (prompt | llm | StrOutputParser()).invoke(invoke_input)
+            logger.info("✅ Groq draft successful.")
+            return draft
+        except Exception as e:
+            logger.warning(f"⚠️ Groq failed ({e}). Falling back to OpenRouter...")
+
+    # --- TIER 2: OpenRouter — Google Gemini 2.0 Flash (free tier) ---
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if openrouter_key:
+        try:
+            logger.info("🔄 Trying OpenRouter (Google Gemini 2.0 Flash)...")
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://globalpulseai.com",
+                    "X-Title": "Global Pulse AI",
+                },
+                json={
+                    "model": "google/gemini-2.0-flash-exp:free",
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Edition: {edition_type}\nDate: {date_str}\n\nStories:\n{stories_text}"}
+                    ],
+                    "max_tokens": 900,
+                    "temperature": 0.7,
+                },
+                timeout=30
+            )
+            if resp.status_code == 200:
+                draft = resp.json()["choices"][0]["message"]["content"]
+                logger.info("✅ OpenRouter (Gemini) draft successful.")
+                return draft
+            else:
+                logger.error(f"OpenRouter error {resp.status_code}: {resp.text}")
+        except Exception as e:
+            logger.error(f"❌ OpenRouter also failed: {e}")
+
+    return "❌ All LLM providers failed. Check GROQ_API_KEY / OPENROUTER_API_KEY in .env"
 
 def execute_linkedin_post(text: str, main_article: Dict = None):
     """Executes the post to both personal and company profiles."""

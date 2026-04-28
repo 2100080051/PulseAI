@@ -207,6 +207,30 @@ with st.sidebar:
             st.error(f"Pipeline error: {e}")
 
     st.divider()
+    st.markdown("### 📃 LinkedIn Scheduler")
+    st.caption("⏰ Auto-posts daily at **4:00 PM IST**")
+
+    scheduler_enabled = st.toggle("✅ Enable 4 PM Auto-Post", value=False, key="scheduler_toggle")
+    if scheduler_enabled:
+        st.success("📣 Scheduler is active. LinkedIn will post at 4 PM IST.")
+    else:
+        st.info("⏸️ Scheduler is paused. Use the button below to post manually.")
+
+    if st.button("🚀 Post to LinkedIn Now", use_container_width=True, key="manual_linkedin_btn"):
+        try:
+            from backend.newsletter.linkedin_bot import blast_linkedin
+            with st.spinner("🤖 Ghostwriting & posting to LinkedIn..."):
+                result = blast_linkedin()
+            if result.get("status") == "success":
+                st.success(f"✅ Posted to {result.get('posted_count')} LinkedIn profiles!")
+            elif result.get("status") == "no_stories":
+                st.warning("⚠️ No approved stories found. Approve stories first.")
+            else:
+                st.error(f"❌ {result.get('message')}")
+        except Exception as e:
+            st.error(f"LinkedIn error: {e}")
+
+    st.divider()
     st.markdown("*Built by Nani · Global Pulse AI 2026*")
 
 
