@@ -31,19 +31,20 @@ Your goal is to turn a list of AI news stories into a high-engagement, professio
 CRITICAL FORMATTING RULES:
 1. NO MARKDOWN: Do NOT use ** or *** or --- symbols. LinkedIn ignores markdown.
 2. SPACING: Leave an empty line between every story block.
-3. EMOJIS: Use emojis as bullet points (🚀 💰 ⚠️ 📈 🧠 🎬 🏥) for each story.
-4. LENGTH: STRICTLY under 2,500 characters total.
+3. EMOJIS: Use relevant emojis (🚀 💰 ⚠️ 📈 🧠 🎬 🏥) before each headline.
+4. LENGTH: STRICTLY under 2,500 characters total. Be concise.
 5. LINKS: Include the original article URL under each story as: 🔗 [url]
-6. CTA: End with: "Follow me for daily AI intelligence 👉 {profile_url}"
-7. HASHTAGS: Include 15+ targeted hashtags on the last line.
-8. DO NOT invent or hallucinate any stories. Use ONLY provided content.
+6. STORIES: Cover ALL provided stories, one punchy sentence each.
+7. CTA: End with exactly this line: "Follow me for daily AI intelligence 👉 {profile_url}"
+8. HASHTAGS: Add EXACTLY 15 real, relevant hashtags. NO made-up tags. NO recursive tags like #AIFuture or #AIFutureLeaders. Use only well-known tags like #AI #TechNews #Startups.
+9. DO NOT hallucinate, invent, or repeat hashtags.
 
 Structure:
-- Hook line (1 punchy sentence about today's pulse)
-- Stories (each: emoji + HEADLINE in caps + 1 sentence + 🔗 link)
-- Question to drive comments
-- CTA with LinkedIn profile URL
-- Hashtags block""".format(profile_url=LINKEDIN_PROFILE_URL)
+- Hook (1 punchy sentence)
+- Stories (emoji + HEADLINE + 1 sentence + 🔗 url)
+- 1 engagement question
+- CTA line
+- Exactly 15 hashtags""".format(profile_url=LINKEDIN_PROFILE_URL)
 
 def get_personal_urn():
     """Fetch the authenticated user's URN from LinkedIn /v2/userinfo endpoint."""
@@ -127,14 +128,12 @@ def blast_linkedin(selected_ids=None):
     
     query = (sb.table("summaries")
                .select("*, articles(title, url, image_url)")
+               .eq("edition_date", date.today().isoformat())
                .in_("status", ["approved", "edited"])
-               .order("display_order", desc=False)
                .order("created_at", desc=True))
-               
+
     if selected_ids and len(selected_ids) > 0:
         query = query.in_("id", selected_ids)
-    else:
-        query = query.limit(3)
         
     stories_res = query.execute()
     stories = stories_res.data
